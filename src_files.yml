@@ -6,7 +6,7 @@ adv_dbg_if:
         rtl/riscv_pkg.sv,
         rtl/dm_pkg.sv,
         rtl/ariane_pkg.sv,
-        rtl/axi_pkg.sv
+        rtl/axi_pkg.sv,
         rtl/ariane_axi_pkg.sv,
         rtl/dm_csrs.sv,
         rtl/dm_mem.sv,
