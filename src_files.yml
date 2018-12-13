@@ -1,0 +1,15 @@
+adv_dbg_if:
+  incdirs: [
+    rtl,
+  ]
+  files: [
+        rtl/dm_csrs.sv,
+        rtl/dmi_cdc.sv,
+        rtl/dmi_jtag.sv,
+        rtl/dmi_jtag_tap.sv,
+        rtl/dm_mem.sv,
+        rtl/dm_pkg.sv,
+        rtl/dm_sba.sv,
+        rtl/dm_top.sv,
+        pulpissimo.cfg
+  ]
