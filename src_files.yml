@@ -1,4 +1,4 @@
-adv_dbg_if:
+pulp_riscv_dbg:
   incdirs: [
     rtl,
   ]
