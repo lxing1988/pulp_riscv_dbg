@@ -1,12 +1,14 @@
 pulp_riscv_dbg:
   incdirs: [
     rtl,
+    rtl/debug_rom,
   ]
   files: [
         rtl/riscv_pkg.sv,
         rtl/dm_pkg.sv,
         rtl/ariane_pkg.sv,
         rtl/axi_pkg.sv,
+        rtl/debug_rom/debug_rom.sv,
         rtl/ariane_axi_pkg.sv,
         rtl/dm_csrs.sv,
         rtl/dm_mem.sv,
