@@ -4,7 +4,6 @@ from string import Template
 import argparse
 import os.path
 import sys
-from bitstring import ConstBitStream, BitArray, BitStream
 
 parser = argparse.ArgumentParser(description='Convert binary file to verilog rom')
 parser.add_argument('filename', metavar='filename', nargs=1,
@@ -23,17 +22,17 @@ filename = os.path.splitext(file)[0]
 license = """\
 /* Copyright 2018 ETH Zurich and University of Bologna.
  * Copyright and related rights are licensed under the Solderpad Hardware
- * License, Version 0.51 (the "License"); you may not use this file except in
+ * License, Version 0.51 (the “License”); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
  * or agreed to in writing, software, hardware and materials distributed under
- * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * this License is distributed on an “AS IS” BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  *
  * File: $filename.v
  *
- * Description: Auto-generated bootrom
+ * Description: Auto-generated 32 bits bootrom
  */
 
 // Auto-generated code
@@ -43,13 +42,13 @@ module = """\
 module $filename (
    input  logic         clk_i,
    input  logic         req_i,
-   input  logic [63:0]  addr_i,
-   output logic [63:0]  rdata_o
+   input  logic [31:0]  addr_i,
+   output logic [31:0]  rdata_o
 );
     localparam int RomSize = $size;
 
-    const logic [RomSize-1:0][63:0] mem = {
-$content
+    const logic [RomSize-1:0][31:0] mem = {
+        $content
     };
 
     logic [$$clog2(RomSize)-1:0] addr_q;
@@ -60,69 +59,55 @@ $content
         end
     end
 
-    // this prevents spurious Xes from propagating into
-    // the speculative fetch stage of the core
-    assign rdata_o = (addr_q < RomSize) ? mem[addr_q] : '0;
+    assign rdata_o = mem[addr_q];
 endmodule
 """
 
-c_var = """\
-// Auto-generated code
+rom = []
 
-const int reset_vec_size = $size;
+with open(filename + ".img", "rb") as f:
+    byte = True;
+    while byte:
+        word = ""
 
-uint32_t reset_vec[reset_vec_size] = {
-$content
-};
-"""
+        # read 32-bit a.k.a 4 byte
+        for i in range(0, 4):
+            byte = f.read(1)
+            if i == 4:
+                word = "_" + word
+            if byte:
+                word = byte.hex() + word
+            # fill up with zeros if unaligned
+            else:
+                pass
+                # word += "00";
 
-def read_bin():
-    s = ConstBitStream(filename=filename + ".img")
-    rom = []
-    try:
-        while True:
-            rom.append(s.read("hex:8"))
-    except Exception as e:
-        pass
-
-    # align to 64 bit
-    align = (int(len(rom) / 8) + 1) * 8;
-
-    for i in range(len(rom), align):
-        rom.append("00")
-
-    return rom
-
-rom = read_bin()
-
-""" Generate C header file for simulator
-"""
-with open(filename + ".h", "w") as f:
-    rom_str = ""
-    # process in junks of 32 bit (4 byte)
-    for i in range(0, int(len(rom)/4)):
-        rom_str += "    0x" + "".join(rom[i*4:i*4+4][::-1]) + ",\n"
-
-    # remove the trailing comma
-    rom_str = rom_str[:-2]
-
-    s = Template(c_var)
-    f.write(s.substitute(filename=filename, size=int(len(rom)/4), content=rom_str))
-
+        if word != "":
+            word = "32'h" + word
+            # print(word)
+            rom.append(word)
     f.close()
 
-""" Generate SystemVerilog bootcode for FPGA and ASIC
-"""
+
+rom.reverse()
+
+# open file for writing
 with open(filename + ".sv", "w") as f:
+
+    # some string preparations
     rom_str = ""
-    # process in junks of 64 bit (8 byte)
-    for i in reversed(range(int(len(rom)/8))):
-        rom_str += "        64'h" + "".join(rom[i*8+4:i*8+8][::-1]) + "_" + "".join(rom[i*8:i*8+4][::-1]) + ",\n"
+    i = 0
+    for r in rom:
+        i += 1
+        rom_str += r + ",\n        ";
 
-    # remove the trailing comma
-    rom_str = rom_str[:-2]
+    rom_str.rstrip()
+    # strip the last whitespace
+    rom_str = rom_str[:-10]
 
+    # write files
     f.write(license)
     s = Template(module)
-    f.write(s.substitute(filename=filename, size=int(len(rom)/8), content=rom_str))
+    f.write(s.substitute(filename=filename, size=i, content=rom_str))
 
+    f.close()
