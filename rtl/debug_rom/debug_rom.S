@@ -14,6 +14,9 @@
 #define FLAG_GO     0
 #define FLAG_RESUME 1
 
+#define CSR_dscatch1_t 0x7b3
+#define BASEaddrDEBUG 0x1a110000
+
         .option norvc
         .global entry
         .global exception
@@ -32,16 +35,17 @@ exception:
 _entry:
         // This fence is required because the execution may have written something
         // into the Abstract Data or Program Buffer registers.
-        fence
+        nop //fence
         csrw CSR_DSCRATCH, s0  // Save s0 to allow signaling MHARTID
-
+        csrw CSR_dscatch1_t, a0
         // We continue to let the hart know that we are halted in order that
         // a DM which was reset is still made aware that a hart is halted.
         // We keep checking both whether there is something the debugger wants
         // us to do, or whether we should resume.
 entry_loop:
         csrr s0, CSR_MHARTID
-        sw   s0, HALTED(zero)
+        li   a0, BASEaddrDEBUG
+        sw   s0, HALTED(a0)
         lbu  s0, FLAGS(s0) // 1 byte flag per hart. Only one hart advances here.
         andi s0, s0, (1 << FLAG_GO)
         bnez s0, going
@@ -52,17 +56,18 @@ entry_loop:
         jal  zero, entry_loop
 
 _exception:
-        sw      zero, EXCEPTION(zero) // Let debug module know you got an exception.
+        sw      zero, EXCEPTION(a0) // Let debug module know you got an exception.
         ebreak
 
 going:
         csrr s0, CSR_DSCRATCH          // Restore s0 here
-        sw zero, GOING(zero)           // When debug module sees this write, the GO flag is reset.
+        sw zero, GOING(a0)           // When debug module sees this write, the GO flag is reset.
         jalr zero, zero, %lo(whereto)
 _resume:
         csrr s0, CSR_MHARTID
-        sw   s0, RESUMING(zero) // When Debug Module sees this write, the RESUME flag is reset.
+        sw   s0, RESUMING(a0) // When Debug Module sees this write, the RESUME flag is reset.
         csrr s0, CSR_DSCRATCH   // Restore s0
+        csrr a0, CSR_dscatch1_t
         dret
 
         // END OF ACTUAL "ROM" CONTENTS. BELOW IS JUST FOR LINKER SCRIPT.
