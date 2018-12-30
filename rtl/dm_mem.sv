@@ -48,10 +48,10 @@ module dm_mem #(
     // SRAM interface
     input  logic                             req_i,
     input  logic                             we_i,
-    input  logic [63:0]                      addr_i,
-    input  logic [63:0]                      wdata_i,
-    input  logic [7:0]                       be_i,
-    output logic [63:0]                      rdata_o
+    input  logic [31:0]                      addr_i,
+    input  logic [31:0]                      wdata_i,
+    input  logic [3:0]                       be_i,
+    output logic [31:0]                      rdata_o
 );
 
     localparam int HartSelLen = (NrHarts == 1) ? 1 : $clog2(NrHarts);
@@ -72,7 +72,7 @@ module dm_mem #(
     localparam logic [DbgAddressBits-1:0] Resuming  = 'h108;
     localparam logic [DbgAddressBits-1:0] Exception = 'h10C;
 
-    logic [2:0][63:0]   abstract_cmd;
+    logic [5:0][31:0]   abstract_cmd;
     logic [NrHarts-1:0] halted_d, halted_q;
     logic [NrHarts-1:0] resuming_d, resuming_q;
     logic               resume, go, going;
@@ -81,8 +81,8 @@ module dm_mem #(
     logic exception, halted;
     logic unsupported_command;
 
-    logic [63:0] rom_rdata;
-    logic [63:0] rdata_d, rdata_q;
+    logic [31:0] rom_rdata;
+    logic [31:0] rdata_d, rdata_q;
     // distinguish whether we need to forward data from the ROM or the FSM
     // latch the address for this
     logic fwd_rom_d, fwd_rom_q;
@@ -163,7 +163,7 @@ module dm_mem #(
 
     // read/write logic
     always_comb begin
-        automatic logic [63:0] data_bits;
+        automatic logic [31:0] data_bits;
 
         halted_d     = halted_q;
         resuming_d   = resuming_q;
@@ -218,46 +218,48 @@ module dm_mem #(
                     WhereTo: begin
                         // variable jump to abstract cmd, program_buffer or resume
                         if (resumereq_i) begin
-                            rdata_d = {32'b0, riscv::jalr(0, 0, dm::ResumeAddress[11:0])};
+                            rdata_d =  riscv::jalr(0, 0, dm::ResumeAddress[11:0]);
                         end
 
                         // there is a command active so jump there
                         if (cmdbusy_o) begin
                             // transfer not set is a shortcut to the program buffer
                             if (!ac_ar.transfer) begin
-                                rdata_d = {32'b0, riscv::jalr(0, 0, ProgBufBase)};
+                                rdata_d = riscv::jalr(0, 0, ProgBufBase);
                             // this is a legit abstract cmd -> execute it
                             end else begin
-                                rdata_d = {32'b0, riscv::jalr(0, 0, AbstractCmdBase)};
+                                rdata_d = riscv::jalr(0, 0, AbstractCmdBase);
                             end
                         end
                     end
 
                     // TODO(zarubaf) change hard-coded values
                     [DataBase:DataEnd]: begin
-                        rdata_d = {data_i[1], data_i[0]};
+                        rdata_d = data_i[0];
                     end
 
                     // TODO(zarubaf) change hard-coded values
                     [ProgBufBase:ProgBufEnd]: begin
                         case (addr_i[DbgAddressBits-1:0])
-                            ProgBufBase + 16: rdata_d = {progbuf_i[5], progbuf_i[4]};
-                            ProgBufBase + 8:  rdata_d = {progbuf_i[3], progbuf_i[2]};
-                            ProgBufBase:      rdata_d = {progbuf_i[1], progbuf_i[0]};
+                            ProgBufBase + 16: rdata_d =  progbuf_i[5];
+                            ProgBufBase + 12: rdata_d =  progbuf_i[4];
+                            ProgBufBase + 8:  rdata_d =  progbuf_i[3];
+                            ProgBufBase + 4:  rdata_d =  progbuf_i[2];
+                            ProgBufBase:      rdata_d =  progbuf_i[0];
                         endcase
                     end
 
                     // two slots for abstract command
                     [AbstractCmdBase:AbstractCmdEnd]: begin
                         // return the correct address index
-                        rdata_d = abstract_cmd[(addr_i[DbgAddressBits-1:3] - AbstractCmdBase[DbgAddressBits-1:3])];
+                        rdata_d = abstract_cmd[(addr_i[DbgAddressBits-1:2] - AbstractCmdBase[DbgAddressBits-1:2])];
                     end
                     // harts are polling for flags here
                     [FlagsBase:FlagsEnd]: begin
-                        automatic logic [7:0][7:0] rdata;
+                        automatic logic [3:0][7:0] rdata;
                         rdata = '0;
                         // release the corresponding hart
-                        if (({addr_i[DbgAddressBits-1:3], 3'b0} - FlagsBase[DbgAddressBits-1:0]) == {hartsel_i[DbgAddressBits-1:3], 3'b0}) begin
+                        if (({addr_i[DbgAddressBits-1:2], 2'b0} - FlagsBase[DbgAddressBits-1:0]) == {hartsel_i[DbgAddressBits-1:2], 2'b0}) begin
                             rdata[hartsel_i[2:0]] = {6'b0, resume, go};
                         end
                         rdata_d = rdata;
@@ -276,11 +278,11 @@ module dm_mem #(
         // default memory
         // if ac_ar.transfer is not set then we can take a shortcut to the program buffer
         abstract_cmd[0][31:0]  = riscv::illegal();
-        abstract_cmd[0][63:32] = riscv::nop();
-        abstract_cmd[1][31:0]  = riscv::nop();
-        abstract_cmd[1][63:32] = riscv::nop();
+        abstract_cmd[1][31:0] = riscv::nop();
         abstract_cmd[2][31:0]  = riscv::nop();
-        abstract_cmd[2][63:32] = riscv::ebreak();
+        abstract_cmd[3][31:0] = riscv::nop();
+        abstract_cmd[4][31:0]  = riscv::nop();
+        abstract_cmd[5][31:0] = riscv::ebreak();
 
         // this depends on the command being executed
         unique case (cmd_i.cmdtype)
@@ -306,11 +308,11 @@ module dm_mem #(
                         // store s0 in dscratch
                         abstract_cmd[0][31:0]  = riscv::csrw(riscv::CSR_DSCRATCH0, 8);
                         // load from data register
-                        abstract_cmd[0][63:32] = riscv::load(ac_ar.aarsize, 8, 0, dm::DataAddr);
+                        abstract_cmd[1][31:0] = riscv::load(ac_ar.aarsize, 8, 0, dm::DataAddr);
                         // and store it in the corresponding CSR
-                        abstract_cmd[1][31:0]  = riscv::csrw(riscv::csr_reg_t'(ac_ar.regno[11:0]), 8);
+                        abstract_cmd[2][31:0]  = riscv::csrw(riscv::csr_reg_t'(ac_ar.regno[11:0]), 8);
                         // restore s0 again from dscratch
-                        abstract_cmd[1][63:32] = riscv::csrr(riscv::CSR_DSCRATCH0, 8);
+                        abstract_cmd[3][31:0] = riscv::csrr(riscv::CSR_DSCRATCH0, 8);
                     end
                 end else if (ac_ar.aarsize < 4 && ac_ar.transfer && !ac_ar.write) begin
                     // this range is reserved
@@ -330,18 +332,18 @@ module dm_mem #(
                         // store s0 in dscratch
                         abstract_cmd[0][31:0]  = riscv::csrw(riscv::CSR_DSCRATCH0, 8);
                         // read value from CSR into s0
-                        abstract_cmd[0][63:32] = riscv::csrr(riscv::csr_reg_t'(ac_ar.regno[11:0]), 8);
+                        abstract_cmd[1][31:0] = riscv::csrr(riscv::csr_reg_t'(ac_ar.regno[11:0]), 8);
                         // and store s0 into data section
-                        abstract_cmd[1][31:0]  = riscv::store(ac_ar.aarsize, 8, 0, dm::DataAddr);
+                        abstract_cmd[2][31:0]  = riscv::store(ac_ar.aarsize, 8, 0, dm::DataAddr);
                         // restore s0 again from dscratch
-                        abstract_cmd[1][63:32] = riscv::csrr(riscv::CSR_DSCRATCH0, 8);
+                        abstract_cmd[3][31:0] = riscv::csrr(riscv::CSR_DSCRATCH0, 8);
                     end
                 end
 
                 // check whether we need to execute the program buffer
                 if (ac_ar.postexec) begin
                     // issue a nop, we will automatically run into the program buffer
-                    abstract_cmd[2][63:32] = riscv::nop();
+                    abstract_cmd[5][31:0] = riscv::nop();
                 end
             end
             // not supported at the moment
