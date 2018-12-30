@@ -23,7 +23,7 @@ package dm;
 
     // TODO(zarubaf) This is hard-coded to two at the moment
     // amount of data count registers implemented
-    localparam logic [3:0] DataCount     = 4'h2;
+    localparam logic [3:0] DataCount     = 4'h1; //datacount=1 only support RV32 harts  ;
 
     // address to which a hart should jump when it was requested to halt
     localparam logic [31:0] HaltAddress = 32'h800;
