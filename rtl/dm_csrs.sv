@@ -52,8 +52,9 @@ module dm_csrs #(
     output logic [dm::DataCount-1:0][31:0]    data_o,
 
     input  logic [dm::DataCount-1:0][31:0]    data_i,
-    input  logic                              data_valid_i,
+    input  logic                              data_valid_i //,
     // system bus access module (SBA)
+/*
     output logic [63:0]                       sbaddress_o,
     input  logic [63:0]                       sbaddress_i,
     output logic                              sbaddress_write_valid_o,
@@ -73,6 +74,7 @@ module dm_csrs #(
     input  logic                              sbbusy_i,
     input  logic                              sberror_valid_i, // bus error occurred
     input  logic [2:0]                        sberror_i // bus error occurred
+*/
 );
     // the amount of bits we need to represent all harts
     localparam HartSelLen = (NrHarts == 1) ? 1 : $clog2(NrHarts);
@@ -133,10 +135,11 @@ module dm_csrs #(
     dm::cmderr_t        cmderr_d, cmderr_q;
     dm::command_t       command_d, command_q;
     dm::abstractauto_t  abstractauto_d, abstractauto_q;
+/*
     dm::sbcs_t          sbcs_d, sbcs_q;
     logic [63:0]        sbaddr_d, sbaddr_q;
     logic [63:0]        sbdata_d, sbdata_q;
-
+*/
     logic [NrHarts-1:0] havereset_d, havereset_q;
     // program buffer
     logic [dm::ProgBufSize-1:0][31:0] progbuf_d, progbuf_q;
@@ -151,13 +154,14 @@ module dm_csrs #(
     assign dmi_req_ready_o      = ~resp_queue_full;
     assign resp_queue_push      = dmi_req_valid_i & dmi_req_ready_o;
     // SBA
+/*
     assign sbautoincrement_o = sbcs_q.sbautoincrement;
     assign sbreadonaddr_o    = sbcs_q.sbreadonaddr;
     assign sbreadondata_o    = sbcs_q.sbreadondata;
     assign sbaccess_o        = sbcs_q.sbaccess;
     assign sbdata_o          = sbdata_q;
     assign sbaddress_o       = sbaddr_q;
-
+*/
     assign hartsel_o         = {dmcontrol_q.hartselhi, dmcontrol_q.hartsello};
 
     always_comb begin : csr_read_write
@@ -210,16 +214,19 @@ module dm_csrs #(
         command_d   = command_q;
         progbuf_d   = progbuf_q;
         data_d      = data_q;
+/*
         sbcs_d      = sbcs_q;
         sbaddr_d    = sbaddress_i;
         sbdata_d    = sbdata_q;
+*/
 
         resp_queue_data         = 32'b0;
         cmd_valid_o             = 1'b0;
+/*
         sbaddress_write_valid_o = 1'b0;
         sbdata_read_valid_o     = 1'b0;
         sbdata_write_valid_o    = 1'b0;
-
+*/
         // reads
         if (dmi_req_ready_o && dmi_req_valid_i && dtm_op == dm::DTM_READ) begin
             unique case ({1'b0, dmi_req_i.addr}) inside
@@ -251,6 +258,7 @@ module dm_csrs #(
                 dm::HaltSum1: resp_queue_data = haltsum1;
                 dm::HaltSum2: resp_queue_data = haltsum2;
                 dm::HaltSum3: resp_queue_data = haltsum3;
+/*
                 dm::SBCS: begin
                     if (sbbusy_i) begin
                         sbcs_d.sbbusyerror = 1'b1;
@@ -289,6 +297,7 @@ module dm_csrs #(
                         resp_queue_data = sbdata_q[63:32];
                     end
                 end
+*/
                 default:;
             endcase
         end
@@ -360,6 +369,7 @@ module dm_csrs #(
                         cmd_valid_o = abstractauto_q.autoexecprogbuf[dmi_req_i.addr[3:0]+16];
                     end
                 end
+/*
                 dm::SBCS: begin
                     // access while the SBA was busy
                     if (sbbusy_i) begin
@@ -406,6 +416,7 @@ module dm_csrs #(
                         sbdata_d[63:32] = dmi_req_i.data;
                     end
                 end
+*/
                 default:;
             endcase
         end
@@ -426,6 +437,7 @@ module dm_csrs #(
         // System Bus
         // -------------
         // set bus error
+/*
         if (sberror_valid_i) begin
             sbcs_d.sberror = sberror_i;
         end
@@ -433,6 +445,7 @@ module dm_csrs #(
         if (sbdata_valid_i) begin
             sbdata_d = sbdata_i;
         end
+*/
 
         // dmcontrol
         // TODO(zarubaf) we currently do not implement the hartarry mask
@@ -446,6 +459,7 @@ module dm_csrs #(
         // Non-writeable, clear only
         dmcontrol_d.ackhavereset    = 1'b0;
         // static values for dcsr
+/*
         sbcs_d.sbversion            = 3'b1;
         sbcs_d.sbbusy               = sbbusy_i;
         sbcs_d.sbasize              = 7'd64; // bus is 64 bit wide
@@ -455,6 +469,7 @@ module dm_csrs #(
         sbcs_d.sbaccess16           = 1'b0;
         sbcs_d.sbaccess8            = 1'b0;
         sbcs_d.sbaccess             = 1'b0;
+*/
     end
 
     // output multiplexer
@@ -508,9 +523,11 @@ module dm_csrs #(
             abstractauto_q <= '0;
             progbuf_q      <= '0;
             data_q         <= '0;
+/*
             sbcs_q         <= '0;
             sbaddr_q       <= '0;
             sbdata_q       <= '0;
+*/
         end else begin
             havereset_q    <= havereset_d;
             // synchronous re-set of debug module, active-low, except for dmactive
@@ -533,9 +550,11 @@ module dm_csrs #(
                 abstractauto_q               <= '0;
                 progbuf_q                    <= '0;
                 data_q                       <= '0;
+/*
                 sbcs_q                       <= '0;
                 sbaddr_q                     <= '0;
                 sbdata_q                     <= '0;
+*/
             end else begin
                 dmcontrol_q                  <= dmcontrol_d;
                 cmderr_q                     <= cmderr_d;
@@ -543,9 +562,11 @@ module dm_csrs #(
                 abstractauto_q               <= abstractauto_d;
                 progbuf_q                    <= progbuf_d;
                 data_q                       <= data_d;
+/*
                 sbcs_q                       <= sbcs_d;
                 sbaddr_q                     <= sbaddr_d;
                 sbdata_q                     <= sbdata_d;
+*/
             end
         end
     end

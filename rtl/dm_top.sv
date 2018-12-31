@@ -18,11 +18,13 @@
  */
 
 module dm_top #(
-    parameter int NrHarts      = -1,
+    parameter int NrHarts      = -1 //,
+/*
     parameter int AxiIdWidth   = -1,
     parameter int AxiAddrWidth = -1,
     parameter int AxiDataWidth = -1,
     parameter int AxiUserWidth = -1
+*/
 ) (
     input  logic               clk_i,       // clock
     input  logic               rst_ni,      // asynchronous reset active low, connect PoR here, not the system reset
@@ -33,12 +35,12 @@ module dm_top #(
     input  logic [NrHarts-1:0] unavailable_i, // communicate whether the hart is unavailable (e.g.: power down)
 
     // bus slave, for an execution based technique
-    input  ariane_axi::req_t   axi_s_req_i,
-    output ariane_axi::resp_t  axi_s_resp_o,
+//    input  ariane_axi::req_t   axi_s_req_i,
+//    output ariane_axi::resp_t  axi_s_resp_o,
 
     // bus master, for system bus accesses
-    output ariane_axi::req_t   axi_m_req_o,
-    input  ariane_axi::resp_t  axi_m_resp_i,
+//    output ariane_axi::req_t   axi_m_req_o,
+//    input  ariane_axi::resp_t  axi_m_resp_i,
 
     // Connection to DTM - compatible to RocketChip Debug Module
     input  logic               dmi_rst_ni,
@@ -63,10 +65,10 @@ module dm_top #(
 
     logic                             req;
     logic                             we;
-    logic [63:0]                      addr;
+    logic [31:0]                      addr;
     logic [7:0]                       be;
-    logic [63:0]                      wdata;
-    logic [63:0]                      rdata;
+    logic [31:0]                      wdata;
+    logic [31:0]                      rdata;
 
     logic                             cmderror_valid;
     dm::cmderr_t                      cmderror;
@@ -77,6 +79,7 @@ module dm_top #(
     logic                             data_valid;
     logic [19:0]                      hartsel;
     // System Bus Access Module
+/*
     logic [63:0]                      sbaddress_csrs_sba;
     logic [63:0]                      sbaddress_sba_csrs;
     logic                             sbaddress_write_valid;
@@ -92,7 +95,7 @@ module dm_top #(
     logic                             sbbusy;
     logic                             sberror_valid;
     logic [2:0]                       sberror;
-
+*/
     // Debug Ctrl for each hart -> I haven't found a better way to
     // parameterize this
     for (genvar i = 0; i < NrHarts; i++) begin : dm_hart_ctrl
@@ -129,7 +132,8 @@ module dm_top #(
         .progbuf_o               ( progbuf               ),
         .data_i                  ( data_mem_csrs         ),
         .data_valid_i            ( data_valid            ),
-        .data_o                  ( data_csrs_mem         ),
+        .data_o                  ( data_csrs_mem         ) //,
+/*
         .sbaddress_o             ( sbaddress_csrs_sba    ),
         .sbaddress_i             ( sbaddress_sba_csrs    ),
         .sbaddress_write_valid_o ( sbaddress_write_valid ),
@@ -145,8 +149,9 @@ module dm_top #(
         .sbbusy_i                ( sbbusy                ),
         .sberror_valid_i         ( sberror_valid         ),
         .sberror_i               ( sberror               )
+*/
     );
-
+/*
     dm_sba i_dm_sba (
         .clk_i                   ( clk_i                 ),
         .rst_ni                  ( rst_ni                ),
@@ -169,6 +174,7 @@ module dm_top #(
         .sberror_valid_o         ( sberror_valid         ),
         .sberror_o               ( sberror               )
     );
+*/
 
     dm_mem #(
         .NrHarts (NrHarts)
@@ -197,7 +203,7 @@ module dm_top #(
         .be_i                    ( be                    ),
         .rdata_o                 ( rdata                 )
     );
-
+/*
     AXI_BUS #(
         .AXI_ID_WIDTH   ( AxiIdWidth   ),
         .AXI_ADDR_WIDTH ( AxiAddrWidth ),
@@ -226,5 +232,5 @@ module dm_top #(
         .data_o     ( wdata    ),
         .data_i     ( rdata    )
     );
-
+*/
 endmodule
