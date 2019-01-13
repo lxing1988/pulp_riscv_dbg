@@ -2,8 +2,8 @@
 
 debug_rom = debug_rom.img
 
-GCC=riscv64-unknown-elf-gcc
-OBJCOPY=riscv64-unknown-elf-objcopy
+GCC=riscv32-unknown-elf-gcc
+OBJCOPY=riscv32-unknown-elf-objcopy
 
 all: $(debug_rom)
 
