@@ -14,8 +14,9 @@
 #define FLAG_GO     0
 #define FLAG_RESUME 1
 
-//#define CSR_dscatch1_t 0x7b3
-#define BASEaddrDEBUG 0x1a110000
+#define BASEaddrDEBUG 0x1a110000  //real
+//#define BASEaddrDEBUG 0x0a0000   //verilator model
+
 
         .option norvc
         .global entry
