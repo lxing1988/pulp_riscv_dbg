@@ -14,7 +14,7 @@
 #define FLAG_GO     0
 #define FLAG_RESUME 1
 
-#define CSR_dscatch1_t 0x7b3
+//#define CSR_dscatch1_t 0x7b3
 #define BASEaddrDEBUG 0x1a110000
 
         .option norvc
@@ -36,8 +36,8 @@ _entry:
         // This fence is required because the execution may have written something
         // into the Abstract Data or Program Buffer registers.
         nop //fence
-        csrw CSR_DSCRATCH, s0  // Save s0 to allow signaling MHARTID
-        csrw CSR_dscatch1_t, a0
+        csrw CSR_DSCRATCH0, s0  // Save s0 to allow signaling MHARTID
+        csrw CSR_DSCRATCH1, a0
         // We continue to let the hart know that we are halted in order that
         // a DM which was reset is still made aware that a hart is halted.
         // We keep checking both whether there is something the debugger wants
@@ -46,10 +46,15 @@ entry_loop:
         csrr s0, CSR_MHARTID
         li   a0, BASEaddrDEBUG
         sw   s0, HALTED(a0)
+        //add BASEaddrDEBUG:
+        add s0,s0,a0
         lbu  s0, FLAGS(s0) // 1 byte flag per hart. Only one hart advances here.
         andi s0, s0, (1 << FLAG_GO)
         bnez s0, going
         csrr s0, CSR_MHARTID
+        //li   a0, BASEaddrDEBUG
+        //add BASEaddrDEBUG:
+        add s0,s0,a0
         lbu  s0, FLAGS(s0) // multiple harts can resume  here
         andi s0, s0, (1 << FLAG_RESUME)
         bnez s0, resume
@@ -60,14 +65,16 @@ _exception:
         ebreak
 
 going:
-        csrr s0, CSR_DSCRATCH          // Restore s0 here
+        csrr s0, CSR_DSCRATCH0          // Restore s0 here
         sw zero, GOING(a0)           // When debug module sees this write, the GO flag is reset.
-        jalr zero, zero, %lo(whereto)
+        csrr a0, CSR_DSCRATCH1
+        jal zero, whereto
 _resume:
         csrr s0, CSR_MHARTID
+        li   a0, BASEaddrDEBUG
         sw   s0, RESUMING(a0) // When Debug Module sees this write, the RESUME flag is reset.
-        csrr s0, CSR_DSCRATCH   // Restore s0
-        csrr a0, CSR_dscatch1_t
+        csrr s0, CSR_DSCRATCH0   // Restore s0
+        csrr a0, CSR_DSCRATCH1
         dret
 
         // END OF ACTUAL "ROM" CONTENTS. BELOW IS JUST FOR LINKER SCRIPT.

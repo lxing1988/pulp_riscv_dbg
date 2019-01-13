@@ -14,41 +14,45 @@
  */
 
 // Auto-generated code
-module bootrom (
+module debug_rom (
    input  logic         clk_i,
    input  logic         req_i,
    input  logic [31:0]  addr_i,
    output logic [31:0]  rdata_o
 );
-    localparam int RomSize = 27;
+    localparam int RomSize = 31;
 
     const logic [RomSize-1:0][31:0] mem = {
         32'h7b200073,
         32'h7b302573,
         32'h7b202473,
         32'h10852423,
+        32'h1a110537,
         32'hf1402473,
-        32'h30050067,
+        32'haa1ff06f,
+        32'h7b302573,
         32'h10052223,
         32'h7b202473,
         32'h00100073,
         32'h10052623,
-        32'hfd9ff06f,
-        32'hfc0414e3,
+        32'hfd1ff06f,
+        32'hfc0410e3,
         32'h00247413,
         32'h40044403,
+        32'h00a40433,
         32'hf1402473,
-        32'h02041063,
+        32'h02041263,
         32'h00147413,
         32'h40044403,
+        32'h00a40433,
         32'h10852023,
         32'h1a110537,
         32'hf1402473,
         32'h7b351073,
         32'h7b241073,
         32'h00000013,
-        32'h03c0006f,
-        32'h0540006f,
+        32'h0440006f,
+        32'h0600006f,
         32'h00c0006f
     };
 
